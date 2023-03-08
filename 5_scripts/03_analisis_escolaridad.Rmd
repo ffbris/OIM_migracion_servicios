@@ -1,0 +1,86 @@
+---
+title: "experimento"
+author: "Fernando Briseño"
+date: '2022-09-01'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+
+
+function.migrante.esc2 <- function(df) {
+  df %>% filter(clase2 == 1, 
+                  r_def == 0, 
+                  (c_res == 1 | c_res == 3), 
+                  eda >= 15, 
+                  eda <= 98,
+                  rama_est2 == 3
+                  ) %>% 
+  mutate(migrante = ifelse(l_nac_c > 33, TRUE,FALSE)) %>% filter(migrante ==TRUE) %>% 
+  group_by(TIEMPO) %>% 
+  summarise(Media = weighted.mean(anios_esc, fac), 
+            Mediana = weighted.median(anios_esc, fac, na.rm = TRUE),
+            Cuartil_1 = weighted.quantile(anios_esc, fac, prob = .25, na.rm= TRUE),
+            Cuartil_3 = weighted.quantile(anios_esc, fac, prob = .75, na.rm= TRUE))
+}
+
+lista.pob.ocup.mig.esc2 <- lapply(lista.df, function.migrante.esc2)
+
+bd.ocupacion.esc2 <- Reduce(full_join,lista.pob.ocup.mig.esc2) %>% mutate(fecha = as.yearqtr(TIEMPO))
+```
+
+
+```{r}
+bd.ocupacion.esc %>% #mutate(eda7c = as.factor(eda7c)) %>% 
+  filter(fecha < 2022)  %>% 
+  ggplot(aes(x=fecha)) +
+                          geom_line(aes(y=Media)) + 
+                          geom_line(alpha=.5, aes(y=Mediana), linetype = "dotted") + 
+                          geom_ribbon(aes(ymin = Cuartil_1, ymax =Cuartil_3), alpha = .2) +
+  
+  # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
+  #                       geom_bar(position="stack", stat="identity") + 
+  #                       xlab("") + 
+                        labs(y="Años de escolaridad", 
+                             x = "Fecha", 
+                             # title = "Años de escolaridad de la población migrante internacional ocupada \nen la manufactura",
+                             # subtitle = "2005-2022 Trimestral",
+                             caption = "Área sombreada = rango entre cuartiles. Línea punteada = mediana. Línea sólida = media.\nTodos los estadísticos son ponderados por los factores de expansión de la ENOE.") + ylim(NA, 15000) +
+                       # theme_bw() + 
+  scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = ".")) +
+                        theme(text=element_text(size=10,  family="Calibri Light"))
+
+ggsave("plot.pob_migmanuf_escolaridad.png", 
+       device = "png",
+       height = 15,
+       width = 25,
+       units = "cm",
+       dpi = 300)
+
+bd.ocupacion.esc %>% #mutate(eda7c = as.factor(eda7c)) %>% 
+  filter(fecha < 2022)  %>% summarise(Media = mean(Media), Mediana = mean(Mediana)) 
+
+bd.ocupacion.esc %>% #mutate(eda7c = as.factor(eda7c)) %>% 
+  filter(fecha == 2021)  
+```
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

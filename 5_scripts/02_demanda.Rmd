@@ -1,0 +1,77 @@
+---
+title: "02_demanda"
+author: "Fernando Briseño"
+date: '2022-07-20'
+output: html_document
+---
+
+```{r, include=FALSE}
+demanda <- bd.ocupacion.total %>% group_by(fecha) %>% filter(rama == 3) %>% summarise(total_o = sum(total.ocupada))
+
+demanda <- rbind(demanda, c(as.yearqtr("2020 Q2"), NA)) %>% arrange(fecha) 
+
+
+modelo_d <- auto.arima(ts(demanda$total_o, frequency = 4, start= c(2005,3)))
+summary(modelo)
+checkresiduals(modelo_d)
+
+forecast(modelo_d,20,level=95)
+```
+
+
+```{r setup, include=FALSE}
+as.data.frame(forecast(modelo_d,20,level=95)) %>% 
+  add_rownames(var = "fecha") %>% 
+  mutate(fecha= as.yearqtr(fecha)) %>% 
+  full_join(demanda, by = "fecha") %>% arrange(fecha) %>% 
+  mutate(Forecast = `Point Forecast`,
+         Lo = `Lo 95`,
+         Hi = `Hi 95`) %>%
+  ggplot(aes(x=fecha)) +
+                          geom_line(alpha=.5, aes(y=total_o)) + 
+                          geom_line(alpha=.5, aes(y= Forecast), linetype = "dotted") + 
+                          geom_ribbon(aes(ymin = Lo, ymax = Hi), alpha = .2) +
+  
+  # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
+  #                       geom_bar(position="stack", stat="identity") + 
+  #                       xlab("") + 
+                        labs(y="Trabajadores", 
+                             x = "Fecha", 
+                             # title = "Población ocupada en manufactura",
+                             # subtitle = "2005-2022 Trimestral (2022-2027 pronóstico)"
+                             ) +
+                       # theme_bw() + 
+  scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = ".")) +
+                        theme(text=element_text(size=10,  family="Calibri Light"))
+
+
+ggsave("plot.modelo_Demanda_ARIMA.png", 
+       device = "png",
+       height = 15,
+       width = 25,
+       units = "cm",
+       dpi = 300)
+
+
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

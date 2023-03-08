@@ -1,0 +1,628 @@
+---
+title: "Serie de tiempo"
+author: "Fernando Briseño"
+date: '2022-06-20'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+setwd("~/Desktop/22 Migración ASI/23 Gráficas nuevas")
+
+# install.packages("urca")
+library(xts)
+library(tidyverse)
+library(TTR)
+library(forecast)
+library(readxl)
+library(corrplot)
+library(caret)
+library(tsDyn)
+library(urca)
+```
+
+```{r}
+library(ggthemr)
+library(spatstat)
+library(shades)
+
+
+library(extrafont)
+
+
+ggthemr_reset()
+
+
+set.seed(12345)
+paleta_OIM_base <- c("#0033A0", 
+                "#5B92E5", 
+                "#FFB81C",
+                "#5CB8B2",
+                "#ff671f",
+                "#d22630")
+
+paleta_OIM <- c(paleta_OIM_base,
+                brightness(paleta_OIM_base, 0.75),
+                brightness(paleta_OIM_base, 0.5),
+                brightness(paleta_OIM_base, 0.3))
+
+OIM <- define_palette(
+  swatch = paleta_OIM,
+  gradient = c(lower = "#5B92E5", upper = "#0033A0"),
+  background = "#ffffff",
+  text = c("#444444", "#444444"),
+  line = c("#696969", "#696969"),
+  gridline = "#F5F5F5"
+)
+
+ggthemr(OIM)
+
+
+
+
+
+```
+
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+
+
+bd_ocupacion <- readRDS("bd_ocupacion.rds")
+bd.ocupacion.jov <- readRDS("bd_ocupacion_jov.rds")
+
+bd.ocupacion.ts <- bd_ocupacion %>% 
+  filter(migrante == TRUE) %>% 
+  group_by(fecha) %>% 
+  summarise(Total =sum(total.ocupada.manufactura))
+
+# Se interpola el dato faltante por COVID
+bd.ocupacion.ts <- rbind(bd.ocupacion.ts, c(as.yearqtr("2020 Q2"), NA)) %>% arrange(fecha) %>% mutate(Total = na.approx(Total))
+
+```
+
+```{r cars}
+#n_mig <- xts(x = bd.ocupacion.ts$Total, order.by = bd.ocupacion.ts$fecha, frequency = NULL,  unique = TRUE, tzone = Sys.getenv("TZ"))
+
+n_mig <- bd.ocupacion.ts %>% filter(fecha < 2022) %>% select(Total) %>% ts(frequency = 4, start= c(2005,3))
+
+plot.ts(n_mig) 
+
+```
+```{r}
+hist(n_mig) 
+hist(log(n_mig)) 
+
+```
+
+
+```{r cars}
+l_n_mig<- log(n_mig)
+
+```
+
+
+
+```{r}
+tseries::adf.test(l_n_mig,alternative = "stationary")
+```
+
+
+```{r cars}
+
+acf(l_n_mig, lag.max=30)
+pacf(l_n_mig, lag.max=30)
+
+```
+
+```{r}
+# auto.arima(l_n_mig)
+
+modelo <- arima(l_n_mig, order=c(2,1,1))
+
+```
+
+```{r}
+summary(modelo)
+```
+
+```{r}
+checkresiduals(modelo)
+```
+
+```{r cars}
+arima1 <- as.data.frame(forecast(modelo,20,level=95))
+```
+
+
+```{r cars}
+arima1 %>% 
+  add_rownames(var = "fecha") %>% 
+  mutate(fecha= as.yearqtr(fecha)) %>% 
+  full_join(bd.ocupacion.ts, by = "fecha") %>% arrange(fecha) %>% 
+  mutate(Forecast = exp(`Point Forecast`),
+         Lo = exp(`Lo 95`),
+         Hi = exp(`Hi 95`)) %>%
+  ggplot(aes(x=fecha)) +
+                          geom_line(aes(y=Total)) + 
+                          geom_line(aes(y= Forecast), linetype = "dotted") + 
+                          geom_ribbon(aes(ymin = Lo, ymax = Hi), alpha = .2) +
+  
+  # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
+  #                       geom_bar(position="stack", stat="identity") + 
+  #                       xlab("") + 
+                        labs(y="Población ocupada", 
+                             x = "Fecha", 
+                             # title = "Trabajadores migrantes internacionales en la manufactura",
+                             # subtitle = "2005-2022 Trimestral (2022-2027 pronóstico)",
+                             # caption = "Fuente: INEGI ENOE, Análisis ASI."
+                             ) +
+                       # theme_bw() + 
+  scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = "."), limits = c(0,NA)) +
+                        theme(text=element_text(size=10,  family="Gill Sans Nova Book"))
+
+ggsave("plot.modelo_1_ARIMAuniv.svg", 
+       device = "svg",
+       height = 15,
+       width = 24,
+       units = "cm",
+       dpi = 300)
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+datos_adicionales <- read_excel("~/Desktop/22 Migración ASI/ENOE/SDEMT/datos_1_stocks.xlsx",  sheet = "Hoja 3")
+
+datos_adicionales$fecha <- as.yearqtr(datos_adicionales$year + .5)
+
+base.completa <- left_join(bd.ocupacion.ts, datos_adicionales, by = "fecha")
+
+base.completa$ref_asylum_MEX <- exp(
+  na.approx(log(base.completa$ref_asylum_MEX), na.rm = FALSE, rule = 2)
+            ) 
+
+base.completa$ref_asylum_US <- exp(
+  na.approx(log(base.completa$ref_asylum_US), na.rm = FALSE, rule = 2)
+            )
+
+base.completa$US_mig_stock <- exp(
+  na.approx(log(base.completa$US_mig_stock), na.rm = FALSE, rule = 2)
+            )
+
+base.completa$MEX_mig_stock <- exp(
+  na.approx(log(base.completa$MEX_mig_stock), na.rm = FALSE, rule = 2)
+            )
+
+datos_adicionales_2 <- read_excel("~/Desktop/22 Migración ASI/ENOE/SDEMT/datos_1_stocks.xlsx",  sheet = "UPMigratoria")
+
+datos_adicionales_2$fecha <- as.yearqtr(as.numeric(datos_adicionales_2$year) + .5)
+
+datos_adicionales_2 <- datos_adicionales_2 %>% select(fecha, Total, visitante_permiso_trabajo, extranjeros_residenes_mex)
+
+base.completa <- left_join(base.completa, datos_adicionales_2, by = "fecha")
+
+base.completa$Total.y <- na.approx(base.completa$Total.y, na.rm = FALSE, rule = 2)
+base.completa$visitante_permiso_trabajo <- na.approx(base.completa$visitante_permiso_trabajo, na.rm = FALSE, rule = 2)     
+base.completa$extranjeros_residenes_mex <- na.approx(base.completa$extranjeros_residenes_mex, na.rm = FALSE, rule = 2) 
+
+base.completa <- left_join(base.completa, bd.ocupacion.jov, by = "fecha")
+base.completa <- base.completa %>% select(-TIEMPO, -year)
+
+
+datos_adicionales_3 <- read_excel("~/Desktop/22 Migración ASI/ENOE/SDEMT/datos_1_stocks.xlsx",  sheet = "econom")
+
+datos_adicionales_3$fecha <- as.yearqtr(as.numeric(datos_adicionales_3$year) + .5)
+
+base.completa <- left_join(base.completa, datos_adicionales_3, by = "fecha")
+base.completa <- base.completa %>% select(-year) 
+
+base.completa$PIB_pc <- exp(
+  na.approx(log(base.completa$PIB_pc), na.rm = FALSE, rule = 2)
+            )
+base.completa$FBCF <- exp(
+  na.approx(log(base.completa$FBCF), na.rm = FALSE, rule = 2)
+            )
+
+base.completa$migracion_interna <- exp(
+  na.spline(log(base.completa$migracion_interna), na.rm = FALSE)
+            )
+
+
+base.completa <- base.completa %>% mutate(
+  FBCF = log(FBCF), 
+  PIB_pc = log(PIB_pc), 
+  migracion_interna = log(migracion_interna), 
+  ref_asylum_MEX = log(ref_asylum_MEX),
+  ref_asylum_US = log(ref_asylum_US),
+  US_mig_stock = log(US_mig_stock),
+  MEX_mig_stock = log(MEX_mig_stock),
+  Total.y = log(Total.y),
+  visitante_permiso_trabajo = log(visitante_permiso_trabajo),
+  extranjeros_residenes_mex = log(extranjeros_residenes_mex),
+  total.ocupada.jov = log(na.spline(total.ocupada.jov, na.rm = FALSE)
+            ))
+
+
+base.completa$Total.x <- log(base.completa$Total.x)
+
+
+corrplot(cor(base.completa[,2:13]), method = "number")
+
+base.completa_colin <- base.completa %>% select(-ref_asylum_MEX, -MEX_mig_stock, -US_mig_stock, -FBCF, -migracion_interna, -extranjeros_residenes_mex) 
+
+
+
+corrplot(cor(base.completa_colin[,2:6]), method = "number")
+
+```
+
+
+
+```{r}
+modelo_2 <- auto.arima(
+  ts(base.completa_colin$Total.x, frequency = 4, start= c(2005,3)), 
+  xreg =  as.matrix(base.completa_colin[,c(3:7)]))
+
+summary(modelo_2)
+
+```
+
+```{r}
+prediccion_regresores <- function(x){
+  y <- base.completa_colin %>% select(x) %>% ts(frequency = 4, start= c(2005,3))
+  modelo <- auto.arima(y)
+  forecast(modelo,20,level=95) %>% as.data.frame() %>% select(`Point Forecast`)
+}
+
+
+
+predicciones <- sapply(3:7, prediccion_regresores) %>% as.data.frame()
+names(predicciones) <- names(base.completa_colin[,3:7]) 
+x_fcst <- as.matrix(
+ # rbind(base.completa[,4:10], 
+        predicciones
+#        ) 
+)
+```
+
+
+
+
+```{r}
+as.data.frame(forecast(modelo_2,5,level=95, xreg=x_fcst)) %>% 
+  add_rownames(var = "fecha") %>% 
+  mutate(fecha= as.yearqtr(fecha)) %>% 
+  full_join(bd.ocupacion.ts, by = "fecha") %>% arrange(fecha) %>% 
+  mutate(Forecast = exp(`Point Forecast`),
+         Lo = exp(`Lo 95`),
+         Hi = exp(`Hi 95`)) %>%
+  ggplot(aes(x=fecha)) +
+                          geom_line(aes(y=Total)) + 
+                          geom_line(aes(y= Forecast), linetype = "dotted") + 
+                          geom_ribbon(aes(ymin = Lo, ymax = Hi), alpha = .2) +
+  
+  # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
+  #                       geom_bar(position="stack", stat="identity") + 
+  #                       xlab("") + 
+                        labs(y="Población ocupada", 
+                             x = "Fecha", 
+                             # title = "Trabajadores migrantes internacionales en la manufactura",
+                             # subtitle = "2005-2022 Trimestral (2022-2027 pronóstico)",
+                             # caption = "Fuente: INEGI ENOE, Análisis ASI."
+                             ) +
+                       # theme_bw() + 
+  scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = "."), limits = c(0,NA)) +
+                        theme(text=element_text(size=10,  family="Gill Sans Nova Book"))
+
+ggsave("~/Desktop/22 Migración ASI/23 Gráficas nuevas/ARIMAS/plot.modelo_2_ARIMAdinam.svg", 
+       device = "svg",
+       height = 15,
+       width = 24,
+       units = "cm",
+       dpi = 300)
+```
+
+```{r}
+checkresiduals(modelo_2)
+forecast(modelo_2,5,level=95, xreg=x_fcst)
+```
+
+```{r}
+# 
+# 
+# 
+#   predicciones %>% 
+#   mutate(fecha= as.yearqtr(seq(from = 2022, to = 2026.75, by =.25))) %>% 
+#   full_join(base.completa_colin, by = c("fecha", 
+#                                         "ref_asylum_US", 
+#                                         "Total.y",
+#                                         "visitante_permiso_trabajo",
+#                                         "total.ocupada.jov",
+#                                         "PIB_pc")) %>% arrange(fecha) %>% 
+#   ggplot(aes(x=fecha)) +
+#                           geom_line(alpha=.5, aes(y= ref_asylum_US)) + 
+#   
+#   # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
+#   #                       geom_bar(position="stack", stat="identity") + 
+#   #                       xlab("") + 
+#                         labs(y="Refugiados en EUA", 
+#                              x = "Fecha", 
+#                              title = "Personas refugiadas en EUA (incluyendo los que buscan asilo)",
+#                              subtitle = "2005-2022 (2022-2027 pronóstico)") +
+#                        # theme_bw() + 
+#   scale_y_continuous(labels = scales::label_number()) +
+#                         theme(text=element_text(size=10,  family="Arial"))
+#   
+# predicciones %>% 
+#   mutate(fecha= as.yearqtr(seq(from = 2022, to = 2026.75, by =.25))) %>% 
+#   full_join(base.completa_colin, by = c("fecha", 
+#                                         "ref_asylum_US", 
+#                                         "Total.y",
+#                                         "visitante_permiso_trabajo",
+#                                         "total.ocupada.jov",
+#                                         "PIB_pc")) %>% arrange(fecha) %>% 
+#   ggplot(aes(x=fecha)) +
+#                           geom_line(alpha=.5, aes(y= Total.y)) + 
+#   
+#   # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
+#   #                       geom_bar(position="stack", stat="identity") + 
+#   #                       xlab("") + 
+#                         labs(y="Entradas a México", 
+#                              x = "Fecha", 
+#                              title = "Entradas a México registradas por el INM",
+#                              subtitle = "2005-2022 (2022-2027 pronóstico)") +
+#                        # theme_bw() + 
+#   scale_y_continuous(labels = scales::label_number()) +
+#                         theme(text=element_text(size=10,  family="Arial"))
+# 
+# predicciones %>% 
+#   mutate(fecha= as.yearqtr(seq(from = 2022, to = 2026.75, by =.25))) %>% 
+#   full_join(base.completa_colin, by = c("fecha", 
+#                                         "ref_asylum_US", 
+#                                         "Total.y",
+#                                         "visitante_permiso_trabajo",
+#                                         "total.ocupada.jov",
+#                                         "PIB_pc")) %>% arrange(fecha) %>% 
+#   ggplot(aes(x=fecha)) +
+#                           geom_line(alpha=.5, aes(y= visitante_permiso_trabajo)) + 
+#   
+#   # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
+#   #                       geom_bar(position="stack", stat="identity") + 
+#   #                       xlab("") + 
+#                         labs(y="Visitantes con permiso de trabajo", 
+#                              x = "Fecha", 
+#                              title = "Visitantes con permiso de trabajo",
+#                              subtitle = "2005-2022 (2022-2027 pronóstico)") +
+#                        # theme_bw() + 
+#   scale_y_continuous(labels = scales::label_number()) +
+#                         theme(text=element_text(size=10,  family="Arial"))
+# 
+# 
+# predicciones %>% 
+#   mutate(fecha= as.yearqtr(seq(from = 2022, to = 2026.75, by =.25))) %>% 
+#   full_join(base.completa_colin, by = c("fecha", 
+#                                         "ref_asylum_US", 
+#                                         "Total.y",
+#                                         "visitante_permiso_trabajo",
+#                                         "total.ocupada.jov",
+#                                         "PIB_pc")) %>% arrange(fecha) %>% 
+#   ggplot(aes(x=fecha)) +
+#                           geom_line(alpha=.5, aes(y= total.ocupada.jov)) + 
+#   
+#   # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
+#   #                       geom_bar(position="stack", stat="identity") + 
+#   #                       xlab("") + 
+#                         labs(y="Personas", 
+#                              x = "Fecha", 
+#                              title = "Población económicamente activa 15-24 años",
+#                              subtitle = "2005-2022  (2022-2027 pronóstico)") +
+#                        # theme_bw() + 
+#   scale_y_continuous(labels = scales::label_number()) +
+#                         theme(text=element_text(size=10,  family="Arial"))
+# 
+# predicciones %>% 
+#   mutate(fecha= as.yearqtr(seq(from = 2022, to = 2026.75, by =.25))) %>% 
+#   full_join(base.completa_colin, by = c("fecha", 
+#                                         "ref_asylum_US", 
+#                                         "Total.y",
+#                                         "visitante_permiso_trabajo",
+#                                         "total.ocupada.jov",
+#                                         "PIB_pc")) %>% arrange(fecha) %>% 
+#   ggplot(aes(x=fecha)) +
+#                           geom_line(alpha=.5, aes(y= PIB_pc)) + 
+#   
+#   # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
+#   #                       geom_bar(position="stack", stat="identity") + 
+#   #                       xlab("") + 
+#                         labs(y="USD", 
+#                              x = "Fecha", 
+#                              title = "PIB per capita",
+#                              subtitle = "2005-2022 (2022-2027 pronóstico)") +
+#                        # theme_bw() + 
+#   scale_y_continuous(labels = scales::label_number()) +
+#                         theme(text=element_text(size=10,  family="Arial"))
+
+```
+
+
+
+
+```{r}
+jotest_2 <- ca.jo(base.completa_colin[,2:7])
+summary(jotest_2)
+
+beta_tsDyn <- VECM(base.completa_colin[,c(2,6)], 
+                   lag = 2, r= 1, 
+                   include = "trend",  
+                   estim = "ML")
+summary(beta_tsDyn)
+
+
+predicciones_3 <- predict(beta_tsDyn, n.ahead = 20) %>% 
+  as.data.frame() %>% 
+  select(Total.x) %>% 
+  mutate(fecha= as.yearqtr(seq(from = 2022, to = 2026.75, by =.25)))
+```
+
+
+```{r}
+predicciones_3 %>% 
+  full_join(bd.ocupacion.ts, by = "fecha") %>% arrange(fecha) %>% 
+  mutate(Forecast = exp(`Total.x`)) %>%
+  ggplot(aes(x=fecha)) +
+                          geom_line(aes(y=Total)) + 
+                          geom_line(alpha=.5, aes(y= Forecast), linetype = "dotted") + 
+  
+  # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
+  #                       geom_bar(position="stack", stat="identity") + 
+  #                       xlab("") + 
+                        labs(y="Población ocupada", 
+                             x = "Fecha", 
+                             # title = "Trabajadores migrantes internacionales en la manufactura",
+                             # subtitle = "2005-2022 Trimestral (2022-2027 pronóstico MCE)",
+                             # caption = "Fuente: INEGI ENOE, Análisis ASI."
+                             ) +
+                       # theme_bw() + 
+  scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = "."), limits = c(0,NA)) +
+                        theme(text=element_text(size=10,  family="Gill Sans Nova Book"))
+
+
+ggsave("~/Desktop/22 Migración ASI/23 Gráficas nuevas/ARIMAS/plot.modelo_3_VECM.svg", 
+       device = "svg",
+       height = 15,
+       width = 24,
+       units = "cm",
+       dpi = 300)
+
+
+# predict(beta_tsDyn, n.ahead = 20) %>% 
+#   as.data.frame() %>% select(total.ocupada.jov) %>% mutate(total.ocupada.jov_2 = exp(total.ocupada.jov)) %>%   mutate(fecha= as.yearqtr(seq(from = 2022, to = 2026.75, by =.25))) %>% 
+#    full_join(base.completa_colin, by = "fecha") %>% arrange(fecha) %>% 
+#   ggplot(aes(x=fecha)) +
+#   geom_line(alpha=.5, aes(y=exp(total.ocupada.jov.y))) + 
+#                           geom_line(alpha=.5, aes(y= total.ocupada.jov_2), linetype = "dotted") 
+
+
+```
+
+## MODELO FRONTERA NORTE 
+```{r cars}
+
+
+bd.ocupacion.estado.ts <- bd.ocupacion.estado %>% 
+  filter(migrante == TRUE)  %>% 
+  group_by(ent, fecha) %>% 
+  summarise(Total = sum(total.ocupada.estado)) %>% 
+  left_join(df_estado, by= "ent") %>%
+   group_by(region, fecha) %>% 
+  summarise(Total = sum(Total)) %>%
+  filter(region =="Noreste") %>% ungroup() %>%
+  select(-1)
+
+
+
+# Se interpola el dato faltante por COVID
+bd.ocupacion.estado.ts <- rbind(bd.ocupacion.estado.ts, c(as.yearqtr("2020 Q2"), NA)) %>% arrange(fecha) %>% mutate(Total = na.approx(Total))
+
+```
+
+```{r cars}
+#n_mig <- xts(x = bd.ocupacion.ts$Total, order.by = bd.ocupacion.ts$fecha, frequency = NULL,  unique = TRUE, tzone = Sys.getenv("TZ"))
+
+n_mig_NE <- bd.ocupacion.estado.ts %>%  filter(fecha > "2013 Q4") %>% select(Total) %>% ts(frequency = 4, start= c(2014,1))
+
+plot.ts(n_mig_NE) 
+
+```
+```{r}
+hist(n_mig_NE) 
+hist(log(n_mig_NE)) 
+
+```
+
+
+```{r cars}
+l_n_mig_NE<- log(n_mig_NE)
+
+```
+
+
+
+
+```{r}
+
+
+modelo_NE <- auto.arima(l_n_mig_NE)
+
+```
+
+```{r}
+summary(modelo_NE)
+```
+
+```{r}
+checkresiduals(modelo_NE)
+```
+
+```{r cars}
+arima1_NE <- as.data.frame(forecast(modelo_NE,24,level=95))
+```
+
+
+```{r cars}
+
+
+arima1_NE %>% 
+  add_rownames(var = "fecha") %>% 
+  mutate(fecha= as.yearqtr(fecha)) %>% 
+  full_join(bd.ocupacion.estado.ts, by = "fecha") %>% arrange(fecha) %>% 
+  mutate(Forecast = exp(`Point Forecast`),
+         Lo = exp(`Lo 95`),
+         Hi = exp(`Hi 95`)) %>%
+  ggplot(aes(x=fecha)) +
+                          geom_line(aes(y=Total)) + 
+                          geom_line(aes(y= Forecast), linetype = "dotted") + 
+                          geom_ribbon(aes(ymin = Lo, ymax = Hi), alpha = .2) +
+  
+  # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
+  #                       geom_bar(position="stack", stat="identity") + 
+  #                       xlab("") + 
+                        labs(y="Población ocupada", 
+                             x = "Fecha", 
+                             # title = "Trabajadores migrantes internacionales en la manufactura",
+                             # subtitle = "2005-2022 Trimestral (2022-2027 pronóstico)",
+                             # caption = "Fuente: INEGI ENOE, Análisis ASI."
+                             ) +
+                       # theme_bw() + 
+  scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = "."), limits = c(0,NA)) +
+                        theme(text=element_text(size=10,  family="Calibri Light"))
+
+
+
+ggsave("plot.modelo_1_ARIMA_NORESTE.png",
+       device = "png",
+       height = 15,
+       width = 25,
+       units = "cm",
+       dpi = 300)
+
+```
+
+
+
+
+
+
+
+
+
+
