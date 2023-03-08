@@ -1,0 +1,3 @@
+# Rmd 
+
+An optional directory where we save our R markdown documents.
