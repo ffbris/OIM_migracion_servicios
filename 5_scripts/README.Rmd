@@ -1,0 +1,3 @@
+# Scripts
+
+All of the main R scripts we have written for the current project are saved here.
