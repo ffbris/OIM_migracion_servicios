@@ -1,0 +1,5 @@
+# DATA
+
+We store all our data in this directory. 
+
+The subdirectory called raw_data contains raw data files and only raw data files. These files should be treated as read only and should not be changed in any way. If you need to process/clean/modify your data do this in R (not MS Excel) as you can document (and justify) any changes made. 
