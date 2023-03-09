@@ -28,7 +28,7 @@ lista.pob.ocup.total <- lapply(lista.df, function.total)
 bd.ocupacion.total <- Reduce(full_join,lista.pob.ocup.total) %>% mutate(fecha = as.yearqtr(TIEMPO))
 
 bd.ocupacion.total %>% saveRDS("1_data/processed_data/bd_ocupacion_total.rds")
-
+bd.ocupacion.total  <-  readRDS("1_data/processed_data/bd_ocupacion_total.rds")
 # Total migrant population as % of total workforce
 
 bd.ocupacion.total %>% group_by(fecha, migrante) %>%
@@ -54,6 +54,8 @@ ggsave("6_output/01_pob_migocupada_total.svg",
        width = 24,
        units = "cm",
        dpi = 300)
+
+
 
 #============================== Total occupied migrant population by sector
 

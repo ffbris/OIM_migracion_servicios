@@ -39,7 +39,6 @@ ggsave("6_output/01_plot.pob_migserv_total.svg",
        units = "cm",
        dpi = 300)
 
-
 bd.ocupacion %>% filter(migrante == TRUE) %>%
   group_by(fecha) %>% 
   summarise(Total = sum(total.ocupada.servicios))%>%
@@ -85,3 +84,28 @@ ggsave("6_output/01_plot.pob_migserv_total_proporcion.svg",
        width = 24,
        units = "cm",
        dpi = 300)  
+
+clasificacion <- c("Restaurantes y servicios \nde alojamiento", "Transportes, comunicaciones,\n correo y almacenamiento", "Servicios profesionales, \nfinancieros y corporativos", 
+"Servicios sociales", "Servicios diversos", "Gobierno y organismos \ninternacionales")
+
+clasif.df <- data.frame(rama_est2 = c(6,7,8,9,10,11), clasificacion)
+
+bd.ocupacion %>% filter(migrante == TRUE) %>% 
+  left_join(clasif.df, by= "rama_est2") %>%
+  group_by(fecha, clasificacion) %>% 
+  summarise(Total = sum(total.ocupada.servicios))%>%
+  mutate(clasificacion = fct_reorder(clasificacion, Total, .desc = FALSE)) %>%
+  ggplot(aes(x=fecha, y=Total, fill = clasificacion)) +
+  geom_bar(position="stack", stat="identity") +
+    xlab("") + 
+  labs(y="Población ocupada", 
+       x = "Fecha") +
+  scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = ".")) +          
+  theme(text=element_text(size=10,  family="Gill Sans Nova Book"))
+
+ggsave("6_output/01_plot.pob_migserv_total_mig_subsector.svg", 
+       device = "svg",
+       height = 15,
+       width = 24,
+       units = "cm",
+       dpi = 300)

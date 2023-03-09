@@ -6,8 +6,6 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-setwd("~/Desktop/22 Migración ASI/23 Gráficas nuevas")
-
 # install.packages("urca")
 library(xts)
 library(tidyverse)
@@ -72,14 +70,13 @@ When you click the **Knit** button a document will be generated that includes bo
 
 ```{r cars}
 
+bd.ocupacion  <-  readRDS("1_data/processed_data/bd.ocupacion.rds")
 
-bd_ocupacion <- readRDS("bd_ocupacion.rds")
-bd.ocupacion.jov <- readRDS("bd_ocupacion_jov.rds")
 
-bd.ocupacion.ts <- bd_ocupacion %>% 
+bd.ocupacion.ts <- bd.ocupacion %>% 
   filter(migrante == TRUE) %>% 
   group_by(fecha) %>% 
-  summarise(Total =sum(total.ocupada.manufactura))
+  summarise(Total =sum(total.ocupada.servicios))
 
 # Se interpola el dato faltante por COVID
 bd.ocupacion.ts <- rbind(bd.ocupacion.ts, c(as.yearqtr("2020 Q2"), NA)) %>% arrange(fecha) %>% mutate(Total = na.approx(Total))
@@ -89,7 +86,7 @@ bd.ocupacion.ts <- rbind(bd.ocupacion.ts, c(as.yearqtr("2020 Q2"), NA)) %>% arra
 ```{r cars}
 #n_mig <- xts(x = bd.ocupacion.ts$Total, order.by = bd.ocupacion.ts$fecha, frequency = NULL,  unique = TRUE, tzone = Sys.getenv("TZ"))
 
-n_mig <- bd.ocupacion.ts %>% filter(fecha < 2022) %>% select(Total) %>% ts(frequency = 4, start= c(2005,3))
+n_mig <- bd.ocupacion.ts %>% select(Total) %>% ts(frequency = 4, start= c(2005,3))
 
 plot.ts(n_mig) 
 
@@ -109,21 +106,20 @@ l_n_mig<- log(n_mig)
 
 
 ```{r}
-tseries::adf.test(l_n_mig,alternative = "stationary")
+tseries::adf.test(n_mig,alternative = "stationary")
 ```
 
 
 ```{r cars}
 
-acf(l_n_mig, lag.max=30)
-pacf(l_n_mig, lag.max=30)
+
 
 ```
 
 ```{r}
-# auto.arima(l_n_mig)
+modelo <- auto.arima(n_mig)
 
-modelo <- arima(l_n_mig, order=c(2,1,1))
+modelo <- arima(n_mig, order=c(0,1,1))
 
 ```
 
@@ -137,33 +133,23 @@ checkresiduals(modelo)
 
 ```{r cars}
 arima1 <- as.data.frame(forecast(modelo,20,level=95))
-```
 
-
-```{r cars}
 arima1 %>% 
   add_rownames(var = "fecha") %>% 
   mutate(fecha= as.yearqtr(fecha)) %>% 
   full_join(bd.ocupacion.ts, by = "fecha") %>% arrange(fecha) %>% 
-  mutate(Forecast = exp(`Point Forecast`),
-         Lo = exp(`Lo 95`),
-         Hi = exp(`Hi 95`)) %>%
+  mutate(Forecast = `Point Forecast`,
+         Lo = `Lo 95`,
+         Hi = `Hi 95`) %>%
   ggplot(aes(x=fecha)) +
                           geom_line(aes(y=Total)) + 
                           geom_line(aes(y= Forecast), linetype = "dotted") + 
                           geom_ribbon(aes(ymin = Lo, ymax = Hi), alpha = .2) +
-  
-  # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
-  #                       geom_bar(position="stack", stat="identity") + 
-  #                       xlab("") + 
                         labs(y="Población ocupada", 
-                             x = "Fecha", 
-                             # title = "Trabajadores migrantes internacionales en la manufactura",
-                             # subtitle = "2005-2022 Trimestral (2022-2027 pronóstico)",
-                             # caption = "Fuente: INEGI ENOE, Análisis ASI."
-                             ) +
-                       # theme_bw() + 
-  scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = "."), limits = c(0,NA)) +
+                             x = "Fecha") + 
+  scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = "."), limits = c(0,NA))
+
++
                         theme(text=element_text(size=10,  family="Gill Sans Nova Book"))
 
 ggsave("plot.modelo_1_ARIMAuniv.svg", 
