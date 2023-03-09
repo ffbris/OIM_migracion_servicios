@@ -52,7 +52,7 @@ bd.ocupacion %>% filter(migrante == TRUE) %>%
   scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = ".")) +          
   theme(text=element_text(size=10,  family="Gill Sans Nova Book"))
 
-ggsave("6_output/01_plot.pob_migmanuf_total_mig.svg", 
+ggsave("6_output/01_plot.pob_migserv_total_mig.svg", 
        device = "svg",
        height = 15,
        width = 24,
@@ -79,7 +79,7 @@ bd.ocupacion %>% group_by(fecha, migrante) %>%
   # theme_bw() + 
   scale_y_continuous(labels = scales::label_percent(decimal.mark = ",")) +          theme(text=element_text(size=10,  family="Gill Sans Nova Book"))
 
-ggsave("6_output/01_plot.pob_migmanuf_total_proporcion.svg", 
+ggsave("6_output/01_plot.pob_migserv_total_proporcion.svg", 
        device = "svg",
        height = 15,
        width = 24,
