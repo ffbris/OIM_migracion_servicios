@@ -8,17 +8,7 @@ function.minus <- function(df){
   return(df)
 }
 
-function.total <- function(df) {
-  df %>% filter(clase2 == 1, 
-                r_def == 0, 
-                (c_res == 1 | c_res == 3), 
-                eda >= 15, 
-                eda <= 98,
-  ) %>% 
-    mutate(migrante = ifelse(l_nac_c > 33, TRUE,FALSE)) %>%
-    group_by(rama, migrante, TIEMPO) %>%
-    summarise(total.ocupada = sum(fac)) %>% ungroup()
-}
+
 
 function.migrante <- function(df) {
   df %>% filter(clase2 == 1, 
