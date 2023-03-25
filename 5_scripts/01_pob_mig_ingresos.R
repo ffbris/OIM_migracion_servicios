@@ -6,8 +6,7 @@ function.migrante.ing <- function(df) {
                 (c_res == 1 | c_res == 3), 
                 eda >= 15, 
                 eda <= 98,
-                rama == 4
-  ) %>% 
+                rama == 4 ) %>% 
     mutate(migrante = ifelse(l_nac_c > 33, TRUE,FALSE)) %>% filter(migrante ==TRUE) %>% 
     group_by(TIEMPO) %>% 
     summarise(Media = weighted.mean(ingocup, fac), 

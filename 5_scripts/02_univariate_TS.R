@@ -87,7 +87,7 @@ arima1 %>%
        x = "Fecha") + 
   scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = "."), 
                      limits = c(0,NA)) +
-  theme(text=element_text(size=10,  family="Gill Sans Nova Book"))
+  common_params
 
 ggsave("6_output/plot.modelo_1_ARIMAuniv.svg", 
        device = "svg",
