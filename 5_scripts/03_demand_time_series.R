@@ -26,26 +26,25 @@ as.data.frame(forecast(modelo_d,20,level=95)) %>%
   geom_line(alpha=.5, aes(y=total_o)) + 
   geom_line(alpha=.5, aes(y= Forecast), linetype = "dotted") + 
   geom_ribbon(aes(ymin = Lo, ymax = Hi), alpha = .2) +
-  
-  # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
-  #                       geom_bar(position="stack", stat="identity") + 
-  #                       xlab("") + 
   labs(y="Trabajadores", 
-       x = "Fecha", 
-       # title = "Población ocupada en manufactura",
-       # subtitle = "2005-2022 Trimestral (2022-2027 pronóstico)"
+       x = "Fecha"
   ) +
-  # theme_bw() + 
-  scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = ".")) +
+  scale_y_continuous(labels = label_number(scale_cut = cut_short_scale()),
+                     limits= c(0, NA)) +
   common_params
 
 
-ggsave("plot.modelo_Demanda_ARIMA.png", 
-       device = "png",
+ggsave("6_output/3_plot.modelo_Demanda_ARIMA.svg", 
+       device = "svg",
        height = 15,
-       width = 25,
+       width = 24,
        units = "cm",
        dpi = 300)
 
+checkresiduals(modelo_d)
 
-
+as.data.frame(forecast(modelo_d,20,level=95)) %>% 
+  add_rownames(var = "fecha") %>% 
+  mutate(fecha= as.yearqtr(fecha)) %>% 
+  full_join(demanda, by = "fecha") %>% arrange(fecha) %>% 
+write.csv("1_data/processed_data/pronosticodemandaARIMA.csv")

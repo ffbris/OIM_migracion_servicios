@@ -40,4 +40,4 @@ vignettes/*.pdf
 
 # The folder raw data due to its size
 1_data/raw_data
-1_data/processed_data
+1_data/processed_data/lista_df.rds

@@ -185,60 +185,53 @@ ggsave("6_output/02_plot.modelo_2_ARIMAdinam.svg",
 
 checkresiduals(modelo_2)
 
+as.data.frame(forecast(modelo_2,level=95, xreg=x_fcst)) %>% 
+  add_rownames(var = "fecha") %>% 
+  mutate(fecha= as.yearqtr(fecha)) %>% 
+  full_join(bd.ocupacion.ts, by = "fecha") %>% arrange(fecha) %>% write.csv("1_data/processed_data/pronosticoARIMAdinamic.csv")
 
-
-base.tercer.modelo <- cbind("Total" = scale(base.completa$Total), base.completa.modif.s.fecha) 
+base.tercer.modelo <- cbind("Total" = base.completa$Total, base.completa.modif.s.fecha)
 
 jotest_2 <- ca.jo(base.tercer.modelo)
 summary(jotest_2)
 
-beta_tsDyn <- VECM(base.completa.modif.s.fecha, 
-                   lag = 2, r= 1, 
-                   include = "trend",  
+beta_tsDyn <- VECM(base.tercer.modelo,
+                   lag = 2, r= 1,
+                   include = "trend",
                    estim = "ML")
 summary(beta_tsDyn)
-
-
-predicciones_3 <- predict(beta_tsDyn, n.ahead = 20) %>% 
-  as.data.frame() %>% 
-  select(Total.x) %>% 
-  mutate(fecha= as.yearqtr(seq(from = 2022, to = 2026.75, by =.25)))
-
-predicciones_3 %>% 
-  full_join(bd.ocupacion.ts, by = "fecha") %>% arrange(fecha) %>% 
-  mutate(Forecast = exp(`Total.x`)) %>%
-  ggplot(aes(x=fecha)) +
-  geom_line(aes(y=Total)) + 
-  geom_line(alpha=.5, aes(y= Forecast), linetype = "dotted") + 
-  
-  # ggplot(aes(x=fecha, y=Total, fill = Edades)) +
-  #                       geom_bar(position="stack", stat="identity") + 
-  #                       xlab("") + 
-  labs(y="Población ocupada", 
-       x = "Fecha", 
-       # title = "Trabajadores migrantes internacionales en la manufactura",
-       # subtitle = "2005-2022 Trimestral (2022-2027 pronóstico MCE)",
-       # caption = "Fuente: INEGI ENOE, Análisis ASI."
-  ) +
-  # theme_bw() + 
-  scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = "."), limits = c(0,NA)) +
-  theme(text=element_text(size=10,  family="Gill Sans Nova Book"))
-
-
-ggsave("6_output/02_plot.modelo_3_VECM.svg", 
-       device = "svg",
-       height = 15,
-       width = 24,
-       units = "cm",
-       dpi = 300)
-
-
-# predict(beta_tsDyn, n.ahead = 20) %>% 
-#   as.data.frame() %>% select(total.ocupada.jov) %>% mutate(total.ocupada.jov_2 = exp(total.ocupada.jov)) %>%   mutate(fecha= as.yearqtr(seq(from = 2022, to = 2026.75, by =.25))) %>% 
-#    full_join(base.completa_colin, by = "fecha") %>% arrange(fecha) %>% 
+# 
+# 
+# predicciones_3 <- predict(beta_tsDyn, n.ahead = 20) %>% 
+#   as.data.frame() %>% 
+#   select(Total) %>% 
+#   mutate(fecha= as.yearqtr(seq(from = 2023, to = 2027.75, by =.25)))
+# 
+# 
+# 
+# predicciones_3 %>% 
+#   full_join(bd.ocupacion.ts, by = "fecha") %>% arrange(fecha) %>% 
+#   mutate(Forecast = `Total.x`) %>%
 #   ggplot(aes(x=fecha)) +
-#   geom_line(alpha=.5, aes(y=exp(total.ocupada.jov.y))) + 
-#                           geom_line(alpha=.5, aes(y= total.ocupada.jov_2), linetype = "dotted") 
-
-
-```
+#   geom_line(aes(y=Total.y)) + 
+#   geom_line(alpha=.5, aes(y= Forecast), linetype = "dotted") + 
+#   labs(y="Población ocupada", 
+#        x = "Fecha") +
+#   scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = "."), limits = c(0,NA)) +
+#   common_params + 
+#   ylim(NA, 230000)
+# 
+# ggsave("6_output/02_plot.modelo_3_VECM.svg", 
+#        device = "svg",
+#        height = 15,
+#        width = 24,
+#        units = "cm",
+#        dpi = 300)
+# 
+# 
+# # predict(beta_tsDyn, n.ahead = 20) %>% 
+# #   as.data.frame() %>% select(total.ocupada.jov) %>% mutate(total.ocupada.jov_2 = exp(total.ocupada.jov)) %>%   mutate(fecha= as.yearqtr(seq(from = 2022, to = 2026.75, by =.25))) %>% 
+# #    full_join(base.completa_colin, by = "fecha") %>% arrange(fecha) %>% 
+# #   ggplot(aes(x=fecha)) +
+# #   geom_line(alpha=.5, aes(y=exp(total.ocupada.jov.y))) + 
+# #                           geom_line(alpha=.5, aes(y= total.ocupada.jov_2), linetype = "dotted") 

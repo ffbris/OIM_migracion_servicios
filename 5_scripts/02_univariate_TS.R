@@ -89,7 +89,7 @@ arima1 %>%
        x = "Fecha") + 
   scale_y_continuous(labels = scales::label_number(decimal.mark = ",", big.mark = "."), 
                      limits = c(0,NA)) +
-  common_params
+  common_params + ylim(NA, 230000)
 
 ggsave("6_output/plot.modelo_1_ARIMAuniv.svg", 
        device = "svg",
@@ -103,3 +103,9 @@ arima1 %>%
   add_rownames(var = "fecha") %>% 
   mutate(fecha= as.yearqtr(fecha)) %>% 
   full_join(bd.ocupacion.ts, by = "fecha") %>% arrange(fecha) %>% write.csv("1_data/processed_data/pronosticoARIMAuniv.csv")
+
+
+arima1 %>% 
+  add_rownames(var = "fecha") %>% 
+  mutate(fecha= as.yearqtr(fecha)) %>% 
+  full_join(bd.ocupacion.ts, by = "fecha") %>% arrange(fecha) %>% as.data.frame %>% tail
