@@ -1,4 +1,5 @@
 
+lista.df <- readRDS("~/Desktop/23 Migración ASI servicios/OIM_migracion_servicios/1_data/processed_data/lista_df.rds")
 
 
 function.migrante.jov <- function(df) {
@@ -14,3 +15,6 @@ function.migrante.jov <- function(df) {
 lista.migrante.jov <- lapply(lista.df, function.migrante.jov)
 
 bd.ocupacion.jov <- Reduce(full_join,lista.migrante.jov) %>% mutate(fecha = as.yearqtr(TIEMPO))
+
+
+bd.ocupacion.jov  %>% saveRDS("1_data/processed_data/bd_ocupacion_jov.rds")

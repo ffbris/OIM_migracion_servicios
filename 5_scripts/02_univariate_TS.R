@@ -55,6 +55,8 @@ bd.ocupacion.ts <- bd.ocupacion %>%
 # Se interpola el dato faltante por COVID
 bd.ocupacion.ts <- rbind(bd.ocupacion.ts, c(as.yearqtr("2020 Q2"), NA)) %>% arrange(fecha) %>% mutate(Total = na.approx(Total))
 
+saveRDS(bd.ocupacion.ts, "1_data/processed_data/bd_ocupacion_ts.rds")
+
 n_mig <- bd.ocupacion.ts %>% select(Total) %>% ts(frequency = 4, start= c(2005,3))
 
 hist(n_mig) 
@@ -97,4 +99,7 @@ ggsave("6_output/plot.modelo_1_ARIMAuniv.svg",
        dpi = 300)
 
 
-
+arima1 %>% 
+  add_rownames(var = "fecha") %>% 
+  mutate(fecha= as.yearqtr(fecha)) %>% 
+  full_join(bd.ocupacion.ts, by = "fecha") %>% arrange(fecha) %>% write.csv("1_data/processed_data/pronosticoARIMAuniv.csv")
