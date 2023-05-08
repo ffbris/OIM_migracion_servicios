@@ -22,6 +22,9 @@ bd.ocupacion.estado <- Reduce(full_join,lista.pob.ocup.estado) %>% mutate(fecha 
 
 bd.ocupacion.estado  %>% saveRDS("1_data/processed_data/bd_ocupacion_estado.rds")
 
+
+bd.ocupacion.estado  <- readRDS("1_data/processed_data/bd_ocupacion_estado.rds")
+
 df_estado <- as.data.frame(cbind(seq(1,32), 
                                  c("Ags.","BC","BCS","Camp.","Coah.","Col.","Chis.","Chih.","CDMX","Dgo.","Gto.","Gro.","Hgo.","Jal.","Mex.","Mich.","Mor.","Nay.","NL","Oax.","Pue.","Qro.","Q. Roo","SLP","Sin.","Son.","Tab.","Tamps.","Tlax.","Ver.","Yuc.","Zac."),
                                  c("Centro-norte","Noreste","Noreste","Peninsula","Norte","Occidente","Sur","Noreste","Centro","Noreste","Centro-norte","Sur","Golfo","Occidente","Centro","Occidente","Centro","Occidente","Norte","Sur","Golfo","Centro-norte","Peninsula","Centro-norte","Noreste","Noreste","Peninsula","Norte","Golfo","Golfo","Peninsula","Centro-norte"
@@ -30,7 +33,7 @@ df_estado <- as.data.frame(cbind(seq(1,32),
 colnames(df_estado) <- c("ent", "entidad", "region")
 df_estado$ent <- as.integer(df_estado$ent)
 
-bd.ocupacion.estado %>% filter(fecha < 2022, migrante == TRUE)  %>% 
+bd.ocupacion.estado %>% filter(migrante == TRUE)  %>% 
   group_by(ent, fecha) %>% 
   summarise(Total = sum(total.ocupada.estado)) %>% 
   left_join(df_estado, by= "ent") %>%
@@ -51,6 +54,15 @@ ggsave("6_output/01_plot.pob_mig_internacional_por_estado.svg",
        width = 24,
        units = "cm",
        dpi = 300)
+
+bd.ocupacion.estado %>% filter(migrante == TRUE)  %>% 
+  group_by(ent, fecha) %>% 
+  summarise(Total = sum(total.ocupada.estado)) %>% 
+  left_join(df_estado, by= "ent") %>%
+  mutate(ent =as.factor(ent)) %>% 
+  filter(fecha == "2022 Q4") %>%
+  ungroup() %>%
+  mutate(Total_perc = Total/sum(Total))
 
 
 bd.ocupacion.estado %>% filter(fecha < 2022, migrante == TRUE)  %>% 

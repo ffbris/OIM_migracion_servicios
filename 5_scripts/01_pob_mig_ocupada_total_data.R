@@ -1,5 +1,5 @@
 
-lista.df <- readRDS("~/Desktop/23 Migración ASI servicios/OIM_migracion_servicios/1_data/processed_dat/lista_df.rds")
+lista.df <- readRDS("~/Desktop/23 Migración ASI servicios/OIM_migracion_servicios/1_data/processed_data/lista_df.rds")
 
 sectores_rama <- c("Agropecuario",
                    "Construcción",
@@ -81,7 +81,11 @@ ggsave("6_output/01_plot.pob_migocupada_total_sector.svg",
        units = "cm",
        dpi = 300)
 
-
+bd.ocupacion.total  %>% filter(migrante == TRUE) %>%
+  group_by(rama, fecha) %>%   
+  left_join(df_rama, by= "rama") %>%
+  mutate(rama =as.factor(rama), Sectores = sectores, Total = total.ocupada) %>% 
+  filter(fecha == "2022 Q4") %>% as.data.frame
 
 #============================== Migrant population as % of total occupied population
 

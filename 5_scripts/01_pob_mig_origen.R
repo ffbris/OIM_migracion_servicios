@@ -10,7 +10,7 @@ function.migrante.origen <- function(df) {
                 rama == 4) %>% 
     mutate(migrante = ifelse(l_nac_c > 33, TRUE,FALSE)) %>%
     filter(migrante == TRUE) %>%
-  mutate(origen = l_nac_c) %>%
+    mutate(origen = l_nac_c) %>%
     group_by(origen, TIEMPO) %>%
     summarise(total.ocupada.origen = sum(fac)) %>% ungroup()
 }

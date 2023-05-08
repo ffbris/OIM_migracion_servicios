@@ -60,7 +60,9 @@ bd.ocupacion.mh <- Reduce(full_join,lista.pob.ocup.mh) %>% mutate(fecha = as.yea
 
 bd.ocupacion.mh  %>% saveRDS("1_data/processed_data/bd_ocupacion_mh.rds")
 
-bd.ocupacion.mh %>% filter(fecha < 2022)  %>% 
+bd.ocupacion.mh  <- readRDS("1_data/processed_data/bd_ocupacion_mh.rds")
+
+bd.ocupacion.mh %>% 
   group_by(mh_col, fecha) %>% 
   summarise(Total = sum(total.ocupada)) %>% 
   left_join(df_MH, by= "mh_col") %>%
@@ -80,7 +82,7 @@ ggsave("6_output/01_plot.pob_migserv_formalinformal.svg",
        units = "cm",
        dpi = 300)
 
-bd.ocupacion.mh %>% filter(fecha < 2022)  %>% 
+bd.ocupacion.mh %>% 
   group_by(mh_col, fecha) %>% 
   summarise(Total = sum(total.ocupada)) %>% 
   left_join(df_MH, by= "mh_col") %>%
@@ -110,7 +112,7 @@ ggsave("6_output/01_plot.pob_migserv_formalinformal_porcentaje.svg",
        dpi = 300)
 
 
-bd.ocupacion.mh %>% filter(fecha < 2022)  %>% 
+bd.ocupacion.mh %>% 
   group_by(mh_col, fecha) %>% 
   summarise(Total = sum(total.ocupada)) %>% 
   left_join(df_MH, by= "mh_col") %>%
@@ -135,3 +137,13 @@ ggsave("6_output/01_plot.pob_migserv_tipoempleo.svg",
        width = 24,
        units = "cm",
        dpi = 300)
+
+
+
+bd.ocupacion.mh %>% 
+  group_by(mh_col, fecha) %>% 
+  summarise(Total = sum(total.ocupada)) %>% 
+  left_join(df_MH, by= "mh_col") %>%
+  mutate(Clasificacion = fct_reorder(sectores_MH_resum, Total, .desc = FALSE)) %>% 
+  filter(fecha == "2022 Q4") %>%
+  as.data.frame %>% clipr::write_clip()
